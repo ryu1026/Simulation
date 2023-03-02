@@ -16,7 +16,13 @@ class Simulate:
                  grid_step=0.5,
                  triangle_radius=5,
                  walk_step_size=1,
-                 intensity_max=1):
+                 intensity_max=1,
+                 photomul_gain=1e6,
+                 photomul_dark_current=0,
+                 photomul_quantum_efficiency=0.4,
+                 amp_gain=200,
+                 amp_band_width=10e6,
+                 amp_noise_factor=2):
 
         self.num_beads = num_beads
         self.beads_diameter = beads_diameter
@@ -31,6 +37,12 @@ class Simulate:
         self.x0 = self.x_grid_size // 2
         self.y0 = self.y_grid_size // 2
         self.intensity_max = intensity_max
+        self.photomul_gain = photomul_gain
+        self.photomul_dark_current = photomul_dark_current
+        self.photomul_quantum_efficiency = photomul_quantum_efficiency
+        self.amp_gain = amp_gain
+        self.amp_band_width = amp_band_width
+        self.amp_noise_factor = amp_noise_factor
 
     def make_grid_and_gaussian_beads(self):
         """
