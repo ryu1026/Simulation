@@ -1,6 +1,6 @@
 import numpy as np
 kb = 1.380649e-23  # Boltzmann constant in J/K
-
+# commit test
 # Define simulation parameters
 signal_duration = 1e-6  # Signal duration in seconds
 sampling_rate = 1e9     # Sampling rate in Hz
