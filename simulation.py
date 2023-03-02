@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import animation
+import random
 
 
 class Simulate:
@@ -13,7 +15,8 @@ class Simulate:
                  y_grid_size=100,
                  grid_step=0.5,
                  triangle_radius=5,
-                 walk_step_size=1):
+                 walk_step_size=1,
+                 intensity_max=1):
 
         self.num_beads = num_beads
         self.beads_diameter = beads_diameter
@@ -27,6 +30,7 @@ class Simulate:
         self.triangle_radius = triangle_radius
         self.x0 = self.x_grid_size // 2
         self.y0 = self.y_grid_size // 2
+        self.intensity_max = intensity_max
 
     def make_grid_and_gaussian_beads(self):
         """
@@ -59,33 +63,40 @@ class Simulate:
         beads_y = np.random.uniform(0, self.y_grid_size, self.num_beads)
 
         beads = np.zeros_like(grid_x)
-
+        clip_beads = np.zeros_like(grid_x)
         # 各ビーズについて，ビーズの座標を中心とした2次元ガウス関数で強度を返す
         # ガウス関数は，グリッド上の各点におけるビーズの蛍光強度を示す．
         for bead_x, bead_y in zip(beads_x, beads_y):
+
             dist = np.sqrt((grid_x - bead_x)**2 + (grid_y - bead_y)**2)
             bead_z = np.exp(-dist ** 2 / (2 * (self.beads_diameter/2) ** 2))
             # bead_z = np.exp(-((grid_x - bead_x)**2 + (grid_y - bead_y)**2) / (2 * (self.beads_diameter/2)**2))
             beads += bead_z
             clip_beads = np.clip(beads, 0, 1)
+
         return beads, clip_beads
 
-    def make_grid_and_not_gaussian_beads(self):
+    def make_grid_and_not_gaussian_beads(self, bead_central_position=False):
         """
         グリッドと蛍光ビーズを作成する
         蛍光ビーズ内の蛍光体の分布は一様であると仮定したバージョン
         """
         grid_x, grid_y = np.meshgrid(np.arange(0, self.x_grid_size, self.grid_step),
                                      np.arange(0, self.y_grid_size, self.grid_step))
+
         beads_x = np.random.uniform(0, self.x_grid_size, self.num_beads)
         beads_y = np.random.uniform(0, self.y_grid_size, self.num_beads)
+
         mask = np.zeros_like(grid_x)
+        clip_mask = np.zeros_like(grid_x)
 
         for bead_x, bead_y in zip(beads_x, beads_y):
+
             # 中心座標を表示
             # 作成した格子はy座標は下に行くほど値が大きいが
-            # 画像では原点が左下にありy座標は上に行くほど値が大きくなるからabs(y_grid_size-y)で調整
-            print("x:" + str(bead_x) + "  y:" + str(abs(self.y_grid_size-bead_y)))
+            # 画像では原点が左下にありy座標は上に行くほど値が大きくなるからabs(y_grid-size_y)で調整
+            if bead_central_position:
+                print("x:" + str(bead_x) + "  y:" + str(abs(self.y_grid_size-bead_y)))
 
             # ランダムに決定した中心と格子点の距離を計算
             distances = np.sqrt((grid_x - bead_x)**2 + (grid_y - bead_y)**2)
@@ -94,10 +105,10 @@ class Simulate:
             # plt.show()
             # image = np.sum(mask, axis=-1)
             clip_mask = np.clip(mask, 0., 1.)
-        return mask, clip_mask
+        return grid_x, grid_y, mask, clip_mask
 
-    def draw_not_gaussian_beads(self, img):
-        plt.imshow(img, cmap='gray', interpolation='nearest', extent=(0, self.x_grid_size, 0, self.y_grid_size))
+    def draw_not_gaussian_beads(self, not_gaussian_beads):
+        plt.imshow(not_gaussian_beads, cmap='gray', interpolation='nearest', extent=(0, self.x_grid_size, 0, self.y_grid_size))
         plt.xlabel("x (microns)")
         plt.ylabel("y (microns)")
         plt.title("Not gaussian fluorescent beads")
@@ -133,15 +144,59 @@ class Simulate:
             y_list.append(y)
         return x_list, y_list
 
-    def generate_spot(self, x, y):
+    def generate_spot(self, grid_x, grid_y, x, y, draw=False):
         """
+        詳細はbeam_sim.pyを参照
         集光点の中心座標をもとにガウシアンビームを作成する
+
+        :param grid_x: ビーズをつくったときにできた格子点
+        :param grid_y: ビーズを作ったときにできた格子点
         :param x: 集光点のx座標
         :param y: 集光点のy座標
+        :param draw: bool 作成したスポットを描画する
+
         :return: 中心(x,y)でスポットの直径がself.spot_diameterのビーム（強度）
         """
-        spot = np.exp(-((x-self.x0)**2 + (y-self.y0)**2) / (2 * (self.spot_diameter/2)**2))
-        return spot
+
+        # sigma = self.spot_diameter / (2 * np.sqrt((2*np.log(2)))) / self.grid_step
+        sigma = self.spot_diameter / (2 * np.sqrt((2*np.log(2))))
+        # グリッドと実際のy座標は増大方向が反対だから差の絶対値をとる
+        y = abs(self.y_grid_size - y)
+
+        r = np.sqrt((grid_x - x)**2 + (grid_y - y)**2)
+
+        spot_intensity = self.intensity_max * np.exp(-r**2 / (2 * sigma**2))
+        # spot = np.exp(-((x-self.x0)**2 + (y-self.y0)**2) / (2 * (self.spot_diameter/2)**2))
+
+        # 作成したスポットを確認するかどうか
+        if draw:
+            plt.imshow(spot_intensity, cmap='hot', extent=(0, self.x_grid_size, 0, self.y_grid_size))
+            # plt.imshow(spot_intensity, cmap='hot', extent=[grid_x.min(), grid_x.max(), grid_y.min(), grid_y.max()])
+            plt.xlabel('x (µm)')
+            plt.ylabel('y (µm)')
+            plt.colorbar()
+            plt.show()
+
+        return spot_intensity
+
+    def draw_beads_and_spot_animation(self, beads, spot_intensity):
+
+        fig = plt.figure()
+        ax = fig.add_subplot()
+        ax.set_xlabel('x [µm]')
+        ax.set_ylabel('y [µm]')
+        ax.set_title('Spot animation')
+
+        imgs = []
+        ax.imshow(beads, cmap='gray', extent=(0, self.x_grid_size, 0, self.y_grid_size))
+        img2 = beads + spot_intensity
+        # plt.imshow(img, cmap='gray', extent=[grid_x.min(), grid_x.max(), grid_y.min(), grid_y.max()])
+        # imgs.append([img])
+        img2 = ax.imshow(img2, cmap='hot', extent=(0, self.x_grid_size, 0, self.y_grid_size))
+        imgs.append([img2])
+
+        ani = animation.ArtistAnimation(fig, imgs)
+        plt.show()
 
     def get_signal(self, spot):
         """
