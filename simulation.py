@@ -92,6 +92,10 @@ class Simulate:
         """
         グリッドと蛍光ビーズを作成する
         蛍光ビーズ内の蛍光体の分布は一様であると仮定したバージョン
+
+        :param: bead_central_position: bool 座標を出力するかどうか（今後はExcelなどにかきだしてもよいかも)
+
+        :return: numpy.ndarray
         """
         grid_x, grid_y = np.meshgrid(np.arange(0, self.x_grid_size, self.grid_step),
                                      np.arange(0, self.y_grid_size, self.grid_step))
@@ -134,28 +138,6 @@ class Simulate:
         ax.set_title('Gaussian fluorescent beads')
         plt.show()
 
-    def random_walk(self, x_pre, y_pre):
-        # 直前の集光点の座標(x0, y0)を受け取って次の集光点(x,y)をランダムに与える
-        x_pre += np.random.normal(scale=self.walk_step_size)  # 平均0，標準偏差: step_sizeの乱数
-        y_pre += np.random.normal(scale=self.walk_step_size)
-        x_next = np.clip(x_pre, 0, self.x_grid_size)  # 最小値が0で最大値がx_grid_sizeに指定される
-        y_next = np.clip(y_pre, 0, self.y_grid_size)
-        return x_next, y_next
-
-    def triangle_spot(self, x_pre, y_pre):
-        # 直前の集光点(x0, y0)を中心に半径self.triangle_radiusの三角形で順に集光
-        x_list = []
-        y_list = []
-        # x_list.append(x0)
-        # y_list.append(y0)
-        for i in range(0, 3):
-            x = x_pre + self.triangle_radius * np.cos(2*i*np.pi/3)
-            y = y_pre + self.triangle_radius * np.sin(2*i*np.pi/3)
-            # print("x= "+"y= ", x, y)
-            x_list.append(x)
-            y_list.append(y)
-        return x_list, y_list
-
     def generate_spot(self, grid_x, grid_y, x, y, draw=False):
         """
         詳細はbeam_sim.pyを参照
@@ -168,8 +150,9 @@ class Simulate:
         :param draw: bool 作成したスポットを描画する
 
         :return: 中心(x,y)でスポットの直径がself.spot_diameterのビーム（強度）
+                 numpy.ndarray (1000×1000) <- 100×100のグリッドでstep_sizeが0.1だから．
         """
-
+        # おそらくself.grid_stepで割る必要はない
         # sigma = self.spot_diameter / (2 * np.sqrt((2*np.log(2)))) / self.grid_step
         sigma = self.spot_diameter / (2 * np.sqrt((2*np.log(2))))
         # グリッドと実際のy座標は増大方向が反対だから差の絶対値をとる
@@ -192,7 +175,13 @@ class Simulate:
         return spot_intensity
 
     def draw_beads_and_spot_animation(self, beads, spot_intensity):
+        """
+        実際のビーズと集光点をアニメーションで表示する関数
 
+        :param beads: sim.make_grid_beads系列で作成したビーズとその空間
+        :param spot_intensity: sim.generate_spotで作成した集光点（今後はリストにしたい）
+
+        """
         fig = plt.figure()
         ax = fig.add_subplot()
         ax.set_xlabel('x [µm]')
@@ -280,3 +269,42 @@ class Simulate:
         else:
             self.triangle_radius -= 2
             self.triangle_spot()
+
+    def random_walk(self, x_pre, y_pre):
+        """
+        前の集光点の座標を受け取って次の集光点を正規分布に従って出力する関数
+        一回前だけだと効率が悪い．これまでの履歴全部保存する? -> メモリや計算時間の担保
+
+        :param x_pre: 前の集光点のx座標
+        :param y_pre: 前の集光点のy座標
+
+        :return: 次の集光点の座標
+        """
+        # 直前の集光点の座標(x0, y0)を受け取って次の集光点(x,y)をランダムに与える
+        x_pre += np.random.normal(scale=self.walk_step_size)  # 平均0，標準偏差: step_sizeの乱数
+        y_pre += np.random.normal(scale=self.walk_step_size)
+        x_next = np.clip(x_pre, 0, self.x_grid_size)  # 最小値が0で最大値がx_grid_sizeに指定される
+        y_next = np.clip(y_pre, 0, self.y_grid_size)
+        return x_next, y_next
+
+    def triangle_spot(self, x_pre, y_pre):
+        """
+        閾値を上回った場合に前の集光点を中心に半径self.triangle_radiusの三角形で順に集光する
+
+        :param x_pre:
+        :param y_pre:
+
+        :return: list (集光点×3のリストであることに注意)
+        """
+        # 直前の集光点(x0, y0)を中心に半径self.triangle_radiusの三角形で順に集光
+        x_list = []
+        y_list = []
+        # x_list.append(x0)
+        # y_list.append(y0)
+        for i in range(0, 3):
+            x = x_pre + self.triangle_radius * np.cos(2 * i * np.pi / 3)
+            y = y_pre + self.triangle_radius * np.sin(2 * i * np.pi / 3)
+            # print("x= "+"y= ", x, y)
+            x_list.append(x)
+            y_list.append(y)
+        return x_list, y_list

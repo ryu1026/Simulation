@@ -10,7 +10,7 @@ not_gaussian_grid_x, not_gaussian_grid_y, not_gaussian_beads, not_gaussian_clip_
     = sim.make_grid_and_not_gaussian_beads()
 
 spot_intensity = sim.generate_spot(not_gaussian_grid_x, not_gaussian_grid_y, x=50, y=70, draw=False)
-print(type(spot_intensity))
+print(spot_intensity.shape)
 
 sim.draw_beads_and_spot_animation(not_gaussian_clip_beads, spot_intensity)
 # sim.draw_not_gaussian_beads(not_gaussian_clip_beads)
