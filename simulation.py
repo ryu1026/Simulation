@@ -201,6 +201,7 @@ class Simulate:
 
     def get_signal(self, spot):
         """
+        ビーズにｓ
         :param spot:
         :return: 実際の
         """
