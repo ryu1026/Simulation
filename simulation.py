@@ -221,16 +221,28 @@ class Simulate:
             # スポットはgenerate_spotメソッドでつくる
             # 信号取得はget_signalメソッドでつくる
             count += 1
+            # spot = self.generate_spot()
+            # signal = self.get_signal
             spot = np.exp(-((x-self.x0)**2 + (y-self.y0)**2) / (2 * (self.spot_diameter/2)**2))
             signal = np.sum(z * spot)
 
             # 閾値判定でランダムウォークを続けるか決める
             if signal >= self.threshold:
+                # 閾値を上回ったらトライアングルで集光
                 # triangle_spotメソッドからは3点のシーケンスがそれぞれリストとして渡される
                 # next_spot_x，next_spot_yはそれぞれ長さが3のリスト
                 next_spot_x, next_spot_y = self.triangle_spot(x, y)
+
+                # 3点について順番に集光，信号取得
+                # 3点の内最大値が欲しいからsignal_listに順にシグナルを格納してあとで最大値を取り出す．
+                signal_list = []
                 for i in range(0, 3):
+                    # spot = self.generate_spot(next_spot_x[i], next_spot_y[i])
+                    # signal.append(self.get_signal())
                     self.get_signal_and_judge_threshold(int(next_spot_x[i]), int(next_spot_y[i]))
+                # max_signal = max(signal)
+                # max_signal_index = signal.index(max_signal)    信号の最大値のインデックスを返す
+
             else:
                 self.random_walk(x, y)
 
