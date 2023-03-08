@@ -18,6 +18,8 @@ x_list, y_list = self.triangle_spot(next_center_spot_x, next_center_spot_y)
 # generate_spotメソッドにx_list,y_listから座標を取得しspotに代入
 # get_signalで光電子増倍管，アンプを通して輝度値を取得
 # signal.index(max(signal))で3点の計測点の内最大値を示したインデックスを返す
+# continueでつづけることもできえる
+# 一方、ある条件で処理をさせて、ストップさせずにそのまま処理させたい（while文を続けたい）ときには、continueを使います。
 # 最大値を示したインデックスを中心にtriangle_spotつくる
 # 終
 def after_over_threshold_get_signal(self, over_threshold_x, over_threshold_y):
