@@ -15,7 +15,7 @@ class Simulate:
                  y_grid_size=100,
                  grid_step=0.5,
                  triangle_radius=5,
-                 walk_step_size=1,
+                 walk_step_size=10,
                  intensity_max=1,
                  photomul_gain=1e6,
                  photomul_dark_current=0,
