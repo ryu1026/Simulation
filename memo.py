@@ -36,3 +36,72 @@ def after_over_threshold_get_signal(self, over_threshold_x, over_threshold_y):
         signal = get_signal(spot)
     max_signal_index = signal.index(max(signal))
     after_over_threshold_get_signal(x_next_list[max_signal_index], y_next_list[max_signal_index])
+
+def get_signal_general(x_list, y_list):
+    # 3点計測の結果がsignal_listに格納される
+    # ここでは蛍光検出数が0か1か2の3通りに分類される
+    signal_list = get_signal(x_list, y_list)
+    max_signal_index = get_max_index(signal_list=signal_list)
+    max_x_pos, max_y_pos = x_list[max_signal_index], y_list[max_signal_index]
+    x_list2, y_list2 = make_triangle_pos(x_pre_pos=max_x_pos, y_pre_pos=max_y_pos)
+    signal_list2 = get_signal(x_lis2, y_list2)
+    return max_x_pos, max_y_pos, signal_list2
+
+
+def get_signal_general2(x_list, y_list, keikou_threshold=10):
+    # 3点計測の結果がsignal_listに格納される
+    # ここでは蛍光検出数が0か1か2の3通りに分類される
+    signal_list = get_signal(x_list, y_list)
+    over_list = [i for i, x in enumerate(signal_list) if x >= keikou_threshold]
+    if len(over_list==0):
+        x_list, y_list = make_triangle_pos(x_pre_pos=max_x_pos, y_pre_pos=max_y_pos)
+        signal_list = get_signal_not_keikou_thredshold(x_list, y_list)
+    max_signal_index = get_max_index(signal_list=signal_list)
+    max_x_pos, max_y_pos = x_list[max_signal_index], y_list[max_signal_index]
+    x_list2, y_list2 = make_triangle_pos(x_pre_pos=max_x_pos, y_pre_pos=max_y_pos)
+    signal_list2 = get_signal(x_lis2, y_list2)
+    return max_x_pos, max_y_pos, signal_list2
+
+
+def get_signal_not_keikou_thredshold(x_list, y_list):
+    # 蛍光検出数が0の時のシグナルのとり方
+    signal_list = get_signal(x_list, y_list)
+    return signal_list
+
+count = 0
+max_count = 100
+
+while count < max_count:
+    count += 1
+    if count == 1:
+        max_x_pos, max_y_pos, signal_list = get_signal_general(x_list, y_list)
+
+    # signal_listの内，keikou_thresholdを上回った要素のインデックスが格納されている
+    over_list = [i for i, x in enumerate(signal_list) if x >= keikou_threshold]
+
+    if len(over_list) == 0:
+        x_list, y_list = make_triangle_pos(x_pre_pos=max_x_pos, y_pre_pos=max_y_pos)
+        signal_list = get_signal_not_keikou_thredshold(x_list, y_list)
+
+    elif len(over_list) == 1:
+        over_keikou_threshold_x = x_list2[over_list[0]]
+        over_keikou_threshold_y = y_list2[over_list[0]]
+
+        x_new = math.ceil((max_x_pos + over_keikou_threshold_x) / 2)
+        y_new = math.ceil((max_y_pos + over_keikou_threshold_y) / 2)
+        # 中心は前の中心と蛍光を観測した場所との中間
+        x_list, y_list = make_triangle_pos(x_pre_pos=x_new, y_pre_pos=y_new)
+        max_x_pos, max_y_pos, signal_list = get_signal_general(x_list, y_list)
+
+    elif len(over_list) == 2:
+        over_keikou_threshold_x1 = x_list2[over_list[0]]
+        over_keikou_threshold_y1 = y_list2[over_list[0]]
+        over_keikou_threshold_x2 = x_list2[over_list[1]]
+        over_keikou_threshold_y2 = y_list2[over_list[1]]
+
+        x_new = math.ceil((over_keikou_threshold_x1 + over_keikou_threshold_x2) / 2)
+        y_new = math.ceil((over_keikou_threshold_y1 + over_keikou_threshold_y2) / 2)
+
+        x_list, y_list = make_triangle_pos(x_pre_pos=x_new, y_pre_pos=y_new)
+        max_x_pos, max_y_pos, signal_list = get_signal_general(x_list, y_list)
+

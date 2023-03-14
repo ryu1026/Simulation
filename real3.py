@@ -78,48 +78,48 @@ while count < max_count:
     count += 1
     # ここで閾値検出後最初の計測 get_signal(x_list, y_list)
     # signalを返してもらう signal_list = [sig0, sig1, sig2]
-    # signal_listの最大値のインデックスを取得
-    max_signal_index = get_max_index(signal_list=signal_list)
-    # 次の集光点の中心
-    max_x_pos, max_y_pos = x_list[max_signal_index], y_list[max_signal_index]    # 3点の集光点の最大値の座標
+    # ここで蛍光検出数について条件分岐を挟む
+    over_list = [i for i, x in enumerate(signal_list) if x >= keikou_threshold]
+    len_over_list = len(over_list)
 
-    # (max_x_pos, max_y_pos)を中心とする3点の座標
-    x_list2, y_list2 = make_triangle_pos(x_pre_pos=max_x_pos, y_pre_pos=max_y_pos)
-    # x_list2, y_list2に従って集光，信号取得
-    # signal_list2 = [sig0, sig1, sig2]を返してもらう
-
-
-    # 蛍光 (= 閾値以上の輝度値) を検出した計測点を全て使用する
-    # 詳しくは以下の条件分岐を参照
-    over_list = [i for i, x in enumerate(signal_list2) if x >= keikou_threshold]    # 閾値を上回ったインデクッスをリストで返す
-    if len(over_list) == 0:
-        # 3点計測いずれからもあまり大きな蛍光が得られなかった
+    if len_over_list == 0:
+        # 蛍光検出数が0
         # この時は3点計測の中心≒蛍光ビーズの中心
-        # 中心座標は(max_x_pos, max_y_pos)のままで3点計測
-        x_list, y_list = make_triangle_pos(x_pre_pos=max_x_pos, y_pre_pos=max_y_pos)
+        # 中心座標は変えずに再度3点計測
+        # 3点集光の座標リストだけを返す
+        x_list, y_list = make_triangle_pos(x_pre_pos=x_pre, y_pre_pos=y_pre)
 
-    elif len(over_list) == 1:
-        # 3点計測のうち一点だけ高い輝度値が得られた
+    elif len_over_list == 1:
+        # 3点計測のうち1点だけ高い輝度値が得られた
         # 3点計測の中心を高い輝度値を検出した方向に移動して3点計測
-        # とりあえず中心と高輝度値の座標の中点に集光
-        over_keikou_threshold_x = x_list2[over_list[0]]
-        over_keikou_threshold_y = y_list2[over_list[0]]
+        # とりあえず前の中心と高輝度値の座標の中点に集光
+        over_keikou_threshold_x = x_list[over_list[0]]    # 蛍光の閾値 (keikou_threshold) を上回った時のx座標
+        over_keikou_threshold_y = y_list[over_list[0]]    # 蛍光の閾値を上回った時のy座標
 
-        x_new = math.ceil((max_x_pos + over_keikou_threshold_x) / 2)
-        y_new = math.ceil((max_y_pos + over_keikou_threshold_y) / 2)
-        x_list, y_list = make_triangle_pos(x_pre_pos=x_new, y_pre_pos=y_new)
+        # x_preの値を更新
+        # x_preはもともと3点計測の中心点だった
+        x_pre = math.ceil((x_pre + over_keikou_threshold_x) / 2)
+        y_pre = math.ceil((y_pre + over_keikou_threshold_y) / 2)
 
-    elif len(over_list) == 2:
+        # 3点計測の座標リストを返す
+        x_list, y_list = make_triangle_pos(x_pre_pos=x_pre, y_pre_pos=y_pre)
+
+    elif len_over_list == 2:
         # 3点計測のうち2点で高い輝度値が得られた
         # 2点の中間値を次の中心にする
-        over_keikou_threshold_x1 = x_list2[over_list[0]]
-        over_keikou_threshold_y1 = y_list2[over_list[0]]
-        over_keikou_threshold_x2 = x_list2[over_list[1]]
-        over_keikou_threshold_y2 = y_list2[over_list[1]]
+        over_keikou_threshold_x1, over_keikou_threshold_x2 = x_list[over_list[0]], x_list[over_list[1]]
+        over_keikou_threshold_y1, over_keikou_threshold_y2 = y_list[over_list[0]], y_list[over_list[1]]
 
-        x_new = math.ceil((over_keikou_threshold_x1 + over_keikou_threshold_x2) / 2)
-        y_new = math.ceil((over_keikou_threshold_y1 + over_keikou_threshold_y2) / 2)
-        x_list, y_list = make_triangle_pos(x_pre_pos=x_new, y_pre_pos=y_new)
+        # x_preの値を更新
+        # x_preはもともと3点計測の中心点だった
+        # keikou_thresholdを上回った二点の中間座標にx_pre, y_preを更新する
+        # ここはmath.ceil((x_pre + over_keikou_threshold_x1 + over_keikou_threshold_x2) / 3)でもいいかも
+        x_pre = math.ceil((over_keikou_threshold_x1 + over_keikou_threshold_x2) / 2)
+        y_pre = math.ceil((over_keikou_threshold_y1 + over_keikou_threshold_y2) / 2)
+        x_list, y_list = make_triangle_pos(x_pre_pos=x_pre, y_pre_pos=y_pre)
 
     else:
-        print("閾値を超えたのが3点 -> triangle_radiusが多分ちいさすぎる")
+        print("閾値を超えたのが3点 -> triangle_radiusが多分小さすぎる")
+        print("いったん終了する")
+        break
+

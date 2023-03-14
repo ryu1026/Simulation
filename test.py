@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 
 sim = Simulate(num_beads=5, grid_step=0.1, spot_diameter=1)
 # help(sim.make_grid_and_gaussian_beads)
-# gaussian_beads, gaussian_clip_beads = sim.make_grid_and_gaussian_beads()
-# sim.draw_fluo_beads(gaussian_clip_beads)
+gaussian_beads, gaussian_clip_beads = sim.make_grid_and_gaussian_beads()
+sim.draw_fluo_beads(gaussian_clip_beads)
 #
 not_gaussian_grid_x, not_gaussian_grid_y, not_gaussian_beads, not_gaussian_clip_beads \
     = sim.make_grid_and_not_gaussian_beads()
@@ -13,7 +13,7 @@ spot_intensity = sim.generate_spot(not_gaussian_grid_x, not_gaussian_grid_y, x=5
 print(spot_intensity.shape)
 
 sim.draw_beads_and_spot_animation(not_gaussian_clip_beads, spot_intensity)
-# sim.draw_not_gaussian_beads(not_gaussian_clip_beads)
+sim.draw_not_gaussian_beads(not_gaussian_clip_beads)
 
 
 # x,y = sim.triangle_spot(10,10)
