@@ -11,8 +11,8 @@ class Simulate:
                  spot_diameter=1,
                  threshold=0.5,
                  max_iteration=100,
-                 x_grid_size=100,
-                 y_grid_size=100,
+                 col_grid_size=100,
+                 row_grid_size=100,
                  grid_step=0.5,
                  triangle_radius=5,
                  walk_step_size=10,
@@ -31,13 +31,13 @@ class Simulate:
         self.spot_radius = self.spot_diameter / 2
         self.threshold = threshold
         self.max_iteration = max_iteration
-        self.x_grid_size = x_grid_size
-        self.y_grid_size = y_grid_size
+        self.col_grid_size = col_grid_size
+        self.row_grid_size = row_grid_size
         self.grid_step = grid_step
         self.walk_step_size = walk_step_size
         self.triangle_radius = triangle_radius
-        self.x0 = self.x_grid_size // 2
-        self.y0 = self.y_grid_size // 2
+        self.x0 = self.col_grid_size // 2
+        self.y0 = self.row_grid_size // 2
         self.intensity_max = intensity_max
         self.intensity_min = intensity_min
         self.photomul_gain = photomul_gain
@@ -47,8 +47,8 @@ class Simulate:
         self.amp_band_width = amp_band_width
         self.amp_noise_factor = amp_noise_factor
 
-        self.grid_x, self.grid_y = np.meshgrid(np.arange(0, self.x_grid_size, self.grid_step),
-                                               np.arange(0, self.y_grid_size, self.grid_step))
+        self.grid_row, self.grid_col = np.meshgrid(np.arange(0, self.col_grid_size, self.grid_step),
+                                                   np.arange(0, self.row_grid_size, self.grid_step))
 
     def make_grid_and_gaussian_beads(self):
         """
@@ -103,8 +103,38 @@ class Simulate:
         """
 
         # 蛍光ビーズの中心座標をランダムに決定
-        beads_x = np.random.randint(0, self.x_grid_size, self.num_beads)
-        beads_y = np.random.randint(0, self.y_grid_size, self.num_beads)
+        # 行方向の位置を決定
+        beads_col = np.random.randint(self.beads_diameter, self.col_grid_size, self.num_beads)
+        # 列方向の位置を決定
+        # beads_row = np.random.randint(0, self.row_grid_size, self.num_beads)
+        beads_row = self.row_grid_size - np.random.randint(0, self.row_grid_size, self.num_beads)
+        mask = np.zeros_like(self.grid_row)
+        # clipped_mask = np.zeros_like(self.grid_col)
+
+        for bead_col, bead_row in zip(beads_col, beads_row):
+            if do_print:
+                # print("beads_pos: (行, 列) = ({0}, {1})".format(bead_col, abs(self.row_grid_size - bead_row)))
+                print("beads_pos: (行, 列) = ({0}, {1}) = (y, x)".format(bead_col, bead_row))
+            # ランダムに決定した中心と格子点の距離を計算
+            dist = np.sqrt((self.grid_col - bead_col) ** 2 + (self.grid_row - bead_row) ** 2)
+            # 現在のビーズの中心からself.beads_diameter/2 よりも近い全てのグリッド点で1に更新される
+            mask += dist < (self.beads_diameter / 2)
+            beads_matrix = np.clip(mask, 0., 1.)
+
+        return beads_matrix, beads_col, beads_row
+
+    def make_not_gaussian_beads_not_random(self, x_pos, y_pos, do_print=False):
+        """
+        ガウシアンでない蛍光ビーズを作成する
+        ビーズ内の蛍光体の分布は一様である事に注意
+
+        :param do_print: bool 蛍光ビーズの座標を表示するかどうか (Excelに書き出す?)
+        :return beads_matrix: numpy.ndarray (x_grid_size, y_grid_size)で0か1の値が乗っている
+        """
+
+        # 蛍光ビーズの中心座標をランダムに決定
+        beads_x = x_pos
+        beads_y = y_pos
 
         mask = np.zeros_like(self.grid_x)
         clipped_mask = np.zeros_like(self.grid_x)
@@ -122,11 +152,31 @@ class Simulate:
         return beads_matrix
 
     def draw_not_gaussian_beads(self, not_gaussian_beads):
-        plt.imshow(not_gaussian_beads, cmap='gray', interpolation='nearest',
-                   extent=(0, self.x_grid_size, 0, self.y_grid_size))
-        plt.xlabel("x (microns)")
-        plt.ylabel("y (microns)")
-        plt.title("Not gaussian fluorescent beads")
+
+        fig, ax = plt.subplots()
+        ax.imshow(not_gaussian_beads, cmap='gray', interpolation='nearest',
+                  extent=(0, self.col_grid_size, 0, self.row_grid_size))
+        ax.set_xlabel("row (microns)")
+        ax.set_ylabel("col (microns)")
+        ax.set_title("Not gaussian fluorescent beads")
+        ax.xaxis.set_ticks_position('top')
+        ax.xaxis.set_label_position('top')
+        # ax.invert_yaxis()
+        plt.show()
+
+    def draw_not_gaussian_beads_invert_y(self, not_gaussian_beads):
+
+        fig, ax = plt.subplots()
+        ax.imshow(not_gaussian_beads, cmap='gray', interpolation='nearest',
+                  extent=(0, self.col_grid_size, 0, self.row_grid_size))
+        ax.set_xlabel("row (microns)")
+        ax.set_ylabel("col (microns)")
+        ax.set_title("Not gaussian fluorescent beads")
+        ax.xaxis.set_ticks_position('top')
+        ax.xaxis.set_label_position('top')
+        ax.set_yticks([])
+        ax.set_yticklabels([])
+        # ax.invert_yaxis()
         plt.show()
 
     def draw_fluo_beads(self, beads):
@@ -229,7 +279,7 @@ class Simulate:
         ani = animation.ArtistAnimation(fig, imgs)
         plt.show()
 
-    def get_signal(self, beads_matrix, x_pos, y_pos):
+    def get_signal(self, beads_matrix, col_pos, row_pos):
         """
         指定された座標を中心に直径self.spot_diameterのガウシアンで信号を取得する
         beads_matrixの画素値にガウシアンをかけて量子効率を乗算する
@@ -238,10 +288,65 @@ class Simulate:
         """
         # スライス時には整数で範囲を指定する必要がある．
         # 集光スポットをグリッドの間隔に合わせないといけない
+        # 集光スポットが1 µmであり，これはグリッドの10個分に相当する
+        # 以下のコードは集光スポットの半径がself.spot_radiusで格子点の間隔はgrid_stepだから
+        # 半径のグリッド数はself.spot_radius / self.grid_stepで求められる
+        quantum_efficiency = 1.
+        spot_radius_scale = int(self.spot_radius / self.grid_step)
+
+        print("spot_radius_scale: ", spot_radius_scale)
+        signal_area_value = beads_matrix[col_pos * 10, row_pos * 10]
+        print("signal_value", signal_area_value)
+        signal_area = beads_matrix[col_pos * 10 - spot_radius_scale:col_pos * 10 + spot_radius_scale,
+                      row_pos * 10 - spot_radius_scale:row_pos * 10 + spot_radius_scale]
+        dist_2 = (np.arange(signal_area.shape[0]) - col_pos * 10) ** 2 + (
+                np.arange(signal_area.shape[1]) - row_pos * 10) ** 2
+        print("signal_area.max", signal_area.max())
+        print("r^2", dist_2)
+
+        # I(r) = I0 * exp ( -2r^2 / w^2 )
+        # w = FWHM / sqrt(2 * ln2)
+        # FWHMの値はとりあえず2 * spot_radius_scaleにする
+        # FWHMはビームの直径であるのに対しwは1/e^2の半径分に相当していることに注意
+        fwhm = 2 * spot_radius_scale
+        w_2 = fwhm ** 2 / (2 * np.log(2))
+        gaussian = np.exp((-2 * dist_2) / w_2)
+        print("fwhm: {0}, w_2: {1}".format(fwhm, w_2))
+        print("gaussian.max()", gaussian.shape)
+        signal = quantum_efficiency * np.sum(signal_area * gaussian)
+        return signal
+
+    def get_signal_simple(self, beads_matrix, col_pos, row_pos):
+        """
+        指定された座標を中心に直径self.spot_diameterの範囲から信号を取得する
+        :return: 実際の
+        """
+        # スライス時には整数で範囲を指定する必要がある．
+        # 集光スポットをグリッドの間隔に合わせないといけない
+        # 集光スポットが1 µmであり，これはグリッドの10個分に相当する
+        # 集光スポットの半径がself.spot_radiusで格子点の間隔はgrid_stepだから
+        # 半径のグリッド数spot_radius_scaleはself.spot_radius / self.grid_stepで求められる
+        quantum_efficiency = 1.
         spot_radius_scale = int(self.spot_radius / self.grid_step)
         print("spot_radius_scale: ", spot_radius_scale)
-        signal = beads_matrix[x_pos - spot_radius_scale:x_pos + spot_radius_scale, y_pos - spot_radius_scale:y_pos + spot_radius_scale]
 
+        signal_area_value = beads_matrix[col_pos * 10, row_pos * 10]
+        print("中心座標の輝度値", signal_area_value)
+
+        # signal_areaは集光点のサイズをbeads_matrixにあてはめた状態
+        signal_area = beads_matrix[col_pos*10-spot_radius_scale:col_pos*10+spot_radius_scale,
+                                   row_pos*10-spot_radius_scale:row_pos*10+spot_radius_scale]
+
+        print("signal_area.shape (10, 10)になるはず", signal_area.shape)
+        print("signal_area.max", signal_area.max())
+
+        # signal_area (10×10)に内接する円の平均シグナルをとる
+        grid_size = 10
+        x, y = np.indices((grid_size, grid_size))
+        circle_indices = np.where((x - spot_radius_scale)**2 + (y - spot_radius_scale)**2 <= spot_radius_scale**2)
+        print("signal_area.min", signal_area.min())
+        print("signal_area.shape", signal_area.shape)
+        signal = np.mean(signal_area[circle_indices])
         return signal
 
     def get_signal_and_judge_threshold(self, x, y):
